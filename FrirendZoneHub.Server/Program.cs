@@ -63,7 +63,8 @@ app.UseStaticFiles();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(
+        options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "FriendZoneHub.Server v1"));
 }
 //app.UseCors("CorsPolicy");
 app.UseCors("AllowAll");
