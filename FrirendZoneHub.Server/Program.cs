@@ -19,14 +19,14 @@ builder.Services.AddSwaggerGen();
 //        builder.WithOrigins("http://chat.mikaelmykha.dev").AllowAnyHeader().AllowAnyMethod().AllowCredentials();
 //    }));
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll",
-        builder => builder
-            .AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader());
-});
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("AllowAll",
+//        builder => builder
+//            .AllowAnyOrigin()
+//            .AllowAnyMethod()
+//            .AllowAnyHeader());
+//});
 
 
 
@@ -49,15 +49,15 @@ builder.Services.AddDbContext<ChatAppContext>(options =>
 //        { context.Token = accessToken; } return Task.CompletedTask; } }; });
 
 builder.Services.AddSignalR();
-builder.Logging.ClearProviders(); builder.Host.UseNLog();
-builder.Services.AddCors(options => {
-    options.AddPolicy("CorsPolicy", builder =>
-    { builder.WithOrigins("http://chat.mikaelmykha.dev").AllowAnyHeader().AllowAnyMethod().AllowCredentials(); });
-});
+//builder.Logging.ClearProviders(); builder.Host.UseNLog();
+//builder.Services.AddCors(options => {
+//    options.AddPolicy("CorsPolicy", builder =>
+//    { builder.WithOrigins("http://chat.mikaelmykha.dev").AllowAnyHeader().AllowAnyMethod().AllowCredentials(); });
+//});
 var app = builder.Build();
 
-app.UseDefaultFiles();
-app.UseStaticFiles();
+//app.UseDefaultFiles();
+//app.UseStaticFiles();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -67,7 +67,7 @@ if (app.Environment.IsDevelopment())
         options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "FriendZoneHub.Server v1"));
 }
 //app.UseCors("CorsPolicy");
-app.UseCors("AllowAll");
+//app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
