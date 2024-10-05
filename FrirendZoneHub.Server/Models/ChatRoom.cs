@@ -15,5 +15,6 @@ namespace FriendZoneHub.Server.Models
         // Navigation properties
         public ICollection<User> Users { get; set; }
         public ICollection<Message> Messages { get; set; }
+        public ICollection<User> AllowedUsers { get; set; }
     }
 }
