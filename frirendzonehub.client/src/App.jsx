@@ -4,6 +4,8 @@ import './App.css';
 function App() {
     const [forecasts, setForecasts] = useState();
 
+
+
     useEffect(() => {
         populateWeatherData();
     }, []);
@@ -40,10 +42,22 @@ function App() {
     );
     
     async function populateWeatherData() {
-        const response = await fetch('weatherforecast');
-        const data = await response.json();
-        setForecasts(data);
+        try {
+            const response = await fetch('weatherforecast');
+
+            // Check if the response is okay
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            setForecasts(data); // Update the state with the fetched data
+        } catch (error) {
+            console.error('Error fetching weather data:', error); // Log the error for debugging
+            // Optionally, you can set an error state here to display in your UI
+        }
     }
 }
+
 
 export default App;

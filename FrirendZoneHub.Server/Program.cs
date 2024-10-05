@@ -12,6 +12,24 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+//builder.Services.AddCors(
+
+//    options => options.AddPolicy("CorsPolicy", builder =>
+//    {
+//        builder.WithOrigins("http://chat.mikaelmykha.dev").AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+//    }));
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        builder => builder
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader());
+});
+
+
+
 builder.Services.AddDbContext<ChatAppContext>(options =>
     options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
                      ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))));
@@ -47,7 +65,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UseCors("CorsPolicy");
+//app.UseCors("CorsPolicy");
+app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
