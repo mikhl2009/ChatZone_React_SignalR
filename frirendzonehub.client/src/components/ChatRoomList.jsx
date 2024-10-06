@@ -5,24 +5,22 @@ import {
   ListItemButton,
   CircularProgress,
   Box,
+  Typography,
 } from "@mui/material";
 import axios from "axios";
 
 const ChatRoomList = ({ selectedRoom, setSelectedRoom }) => {
   const [chatRooms, setChatRooms] = useState([]);
-  const [loading, setLoading] = useState(true); // Loading state
-  const [error, setError] = useState(null); // Error state
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchChatRooms = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get(
-          "https://localhost:7167/api/chatrooms",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        const response = await axios.get("https://localhost:7167/api/chatrooms", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setChatRooms(response.data);
       } catch (err) {
         console.error("Failed to fetch chat rooms:", err);
@@ -37,12 +35,7 @@ const ChatRoomList = ({ selectedRoom, setSelectedRoom }) => {
 
   if (loading) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        height="100%"
-      >
+      <Box display="flex" justifyContent="center" alignItems="center" height="100%">
         <CircularProgress />
       </Box>
     );
@@ -51,7 +44,7 @@ const ChatRoomList = ({ selectedRoom, setSelectedRoom }) => {
   if (error) {
     return (
       <Box textAlign="center" mt={2}>
-        {error}
+        <Typography color="error">{error}</Typography>
       </Box>
     );
   }
