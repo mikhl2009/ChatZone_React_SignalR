@@ -1,4 +1,4 @@
-﻿using FriendZoneHub.Server.Data;
+using FriendZoneHub.Server.Data;
 using FriendZoneHub.Server.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -20,22 +20,26 @@ namespace FriendZoneHub.Server.Hubs
 
         public async Task JoinRoom(string roomName)
         {
-            var chatRoom = await _context.ChatRooms.Include(cr => cr.AllowedUsers)
-                                .FirstOrDefaultAsync(cr => cr.Name == roomName);
-
-            if (chatRoom.IsPrivate)
+            await Groups.AddToGroupAsync(Context.ConnectionId, roomName);
+            var userId = Context.User.Claims.FirstOrDefault(c => c.Type == "uid")?.Value;
+            if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int parsedUserId))
             {
-                var userId = Context.User.Claims.FirstOrDefault(c => c.Type == "uid")?.Value;
-                if (!chatRoom.AllowedUsers.Any(u => u.Id == int.Parse(userId)))
-                {
-                    await Clients.Caller.SendAsync("AccessDenied", "You are not allowed in this room.");
-                    return;
-                }
+                _logger.LogError("Invalid or missing user ID.");
+                return;
             }
 
-            await Groups.AddToGroupAsync(Context.ConnectionId, roomName);
-            _logger.LogInformation($"{Context.User.Identity.Name} joined {roomName}");
-            await Clients.Group(roomName).SendAsync("ReceiveMessage", $"{Context.User.Identity.Name} joined room {roomName}" );
+            var user = await _context.Users.FindAsync(parsedUserId);
+            if (user == null)
+            {
+                _logger.LogError($"User not found with ID: {parsedUserId}");
+                return;
+            }
+
+            var systemMessage = $"{user.Username} joined the room {roomName}";
+            var timestamp = DateTime.UtcNow.ToString("o");
+
+            // Send a system message with user as "System"
+            await Clients.Group(roomName).SendAsync("ReceiveMessage", $"{Context.User.Identity.Name} joined the room {roomName}");
         }
 
         public async Task LeaveRoom(string roomName)
@@ -50,29 +54,43 @@ namespace FriendZoneHub.Server.Hubs
             var sanitizedMessage = System.Net.WebUtility.HtmlEncode(message);
 
             var userId = Context.User.Claims.FirstOrDefault(c => c.Type == "uid")?.Value;
-            var user = await _context.Users.FindAsync(int.Parse(userId));
+            if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int parsedUserId))
+            {
+                _logger.LogError("Invalid or missing user ID.");
+                return;
+            }
+
+            var user = await _context.Users.FindAsync(parsedUserId);
+            if (user == null)
+            {
+                _logger.LogError($"User not found with ID: {parsedUserId}");
+                return;
+            }
+
+            var chatRoom = _context.ChatRooms.FirstOrDefault(cr => cr.Name == roomName);
+            if (chatRoom == null)
+            {
+                _logger.LogError($"Chat room not found: {roomName}");
+                return;
+            }
 
             var chatMessage = new Message
             {
                 Content = sanitizedMessage,
                 Timestamp = DateTime.UtcNow,
-                ChatRoomId = _context.ChatRooms.FirstOrDefault(cr => cr.Name == roomName).Id,
+                ChatRoomId = chatRoom.Id,
                 UserId = user.Id
             };
-            _logger.LogInformation($"{Context.User?.Identity?.Name} {roomName} : {sanitizedMessage}");
+            _logger.LogInformation($"{user.Username} in {roomName}: {sanitizedMessage}");
 
             _context.Messages.Add(chatMessage);
             await _context.SaveChangesAsync();
 
-            await Clients.Group(roomName).SendAsync("ReceiveMessage", user.Username, sanitizedMessage, DateTime.UtcNow);
-            //await Clients.Group(roomName).SendAsync("ReceiveMessage", new
-            //{
-            //    user = user.Username,
-            //    message = sanitizedMessage,  // Meddelandetext
-            //    timestamp = chatMessage.Timestamp
-            //});
+            await Clients.Group(roomName).SendAsync("ReceiveMessage", user.Username, sanitizedMessage, chatMessage.Timestamp.ToString("o"));
         }
-        
+
+
+
 
 
     }
