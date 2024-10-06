@@ -1,9 +1,9 @@
+import React, { useState } from "react";
 import { Box, TextField, Button, Typography } from "@mui/material";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
 
-const Login = () => {
+const Login = ({ setIsAuthenticated }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
@@ -23,10 +23,8 @@ const Login = () => {
 
       if (token) {
         localStorage.setItem("authToken", token); // Store token in localStorage
-        console.log("Login successful, token stored");
-
-        // Redirect to the chat page after successful login
-        navigate("/chat");
+        setIsAuthenticated(true); // Update authentication state
+        navigate("/chat"); // Redirect to chat page after successful login
       } else {
         console.error("No token received");
       }
