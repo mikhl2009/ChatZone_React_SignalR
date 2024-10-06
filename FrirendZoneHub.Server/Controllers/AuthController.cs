@@ -31,14 +31,15 @@ namespace FrirendZoneHub.Server.Controllers
             var user = new User
             {
                 Username = model.Username,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password)
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password),
+                Email = model.Email,
             };
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
             return Ok("User registered successfully.");
         }
-        
-        
+
+
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginModel model)
         {
@@ -46,8 +47,12 @@ namespace FrirendZoneHub.Server.Controllers
             if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
                 return Unauthorized("Invalid credentials.");
 
-            var token = GenerateJwtToken(user);
-            return Ok(new { Token = token });
+            var token = GenerateJwtToken(user);  
+
+            return Ok(new
+            {
+                Token = token, 
+            });
         }
 
         private string GenerateJwtToken(User user)
@@ -56,7 +61,8 @@ namespace FrirendZoneHub.Server.Controllers
             {
             new Claim(JwtRegisteredClaimNames.Sub, user.Username),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim("uid", user.Id.ToString())
+            new Claim("uid", user.Id.ToString()),
+            new Claim(ClaimTypes.Name, user.Username)
         };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));

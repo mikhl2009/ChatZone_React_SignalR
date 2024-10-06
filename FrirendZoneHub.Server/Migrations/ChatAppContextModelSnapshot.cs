@@ -83,15 +83,14 @@ namespace FrirendZoneHub.Server.Migrations
                     b.Property<int?>("ChatRoomId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("ChatRoomId1")
+                        .HasColumnType("int");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("longtext");
 
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("ProfilePictureUrl")
                         .IsRequired()
                         .HasColumnType("longtext");
 
@@ -102,6 +101,8 @@ namespace FrirendZoneHub.Server.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ChatRoomId");
+
+                    b.HasIndex("ChatRoomId1");
 
                     b.ToTable("Users");
                 });
@@ -128,12 +129,18 @@ namespace FrirendZoneHub.Server.Migrations
             modelBuilder.Entity("User", b =>
                 {
                     b.HasOne("FriendZoneHub.Server.Models.ChatRoom", null)
-                        .WithMany("Users")
+                        .WithMany("AllowedUsers")
                         .HasForeignKey("ChatRoomId");
+
+                    b.HasOne("FriendZoneHub.Server.Models.ChatRoom", null)
+                        .WithMany("Users")
+                        .HasForeignKey("ChatRoomId1");
                 });
 
             modelBuilder.Entity("FriendZoneHub.Server.Models.ChatRoom", b =>
                 {
+                    b.Navigation("AllowedUsers");
+
                     b.Navigation("Messages");
 
                     b.Navigation("Users");

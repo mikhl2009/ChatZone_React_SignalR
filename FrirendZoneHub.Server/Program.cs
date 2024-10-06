@@ -1,7 +1,9 @@
 using FriendZoneHub.Server.Data;
 using FriendZoneHub.Server.Hubs;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using NLog.Web;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,25 +30,70 @@ builder.Services.AddSwaggerGen();
 //            .AllowAnyHeader());
 //});
 
+//builder.Services.AddCors(options =>
+//{
+//    options.AddDefaultPolicy(
+//        builder => { builder
+//            .WithOrigins("https://localhost:5173") // Allow your frontend origin
+//            .AllowAnyMethod()
+//            .WithMethods("GET", "POST")
+//            .AllowCredentials(); // Allow credentials (cookies, tokens, etc.)
+//});
+//});
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowLocalhost",
+        builder =>
+        {
+            builder.WithOrigins("https://localhost:5173") // Your React frontend origin
+                   .AllowAnyMethod()
+                   .AllowAnyHeader()
+                   .AllowCredentials(); // Enable credentials if needed
+        });
+});
+
 
 
 builder.Services.AddDbContext<ChatAppContext>(options =>
     options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
                      ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))));
 
-//builder.Services.AddAuthentication(options => { options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme; 
-//    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme; }).AddJwtBearer(options => {
-//options.TokenValidationParameters = new TokenValidationParameters
-//{
-//    ValidateIssuer = true,
-//    ValidateAudience = true,
-//    ValidateLifetime = true,
-//    ValidateIssuerSigningKey = true,
-//    ValidIssuer = builder.Configuration["Jwt"], ValidAudience = builder.Configuration["System.IdentityModel.Tokens.Jwt"], 
-//    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt"])) }; options.
-//    Events = new JwtBearerEvents { OnMessageReceived = context => { var accessToken = context.Request.Query["access_token"]; 
-//        var path = context.HttpContext.Request.Path; if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments(" / chathub")) 
-//        { context.Token = accessToken; } return Task.CompletedTask; } }; });
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+}).AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+    };
+
+    // SignalR negotiation
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) &&
+                (path.StartsWithSegments("/chathub")))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
+});
+
 
 builder.Services.AddSignalR();
 //builder.Logging.ClearProviders(); builder.Host.UseNLog();
@@ -67,7 +114,7 @@ if (app.Environment.IsDevelopment())
         options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "FriendZoneHub.Server v1"));
 }
 //app.UseCors("CorsPolicy");
-//app.UseCors("AllowAll");
+app.UseCors("AllowLocalhost");
 
 app.UseAuthentication();
 app.UseAuthorization();

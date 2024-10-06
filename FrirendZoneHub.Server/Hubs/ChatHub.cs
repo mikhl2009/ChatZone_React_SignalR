@@ -35,6 +35,7 @@ namespace FriendZoneHub.Server.Hubs
 
             await Groups.AddToGroupAsync(Context.ConnectionId, roomName);
             _logger.LogInformation($"{Context.User.Identity.Name} joined {roomName}");
+            await Clients.Group(roomName).SendAsync("ReceiveMessage", $"{Context.User.Identity.Name} joined room {roomName}" );
         }
 
         public async Task LeaveRoom(string roomName)
@@ -58,16 +59,18 @@ namespace FriendZoneHub.Server.Hubs
                 ChatRoomId = _context.ChatRooms.FirstOrDefault(cr => cr.Name == roomName).Id,
                 UserId = user.Id
             };
+            _logger.LogInformation($"{Context.User?.Identity?.Name} {roomName} : {sanitizedMessage}");
 
             _context.Messages.Add(chatMessage);
             await _context.SaveChangesAsync();
 
-            await Clients.Group(roomName).SendAsync("ReceiveMessage", new
-            {
-                Username = user.Username,
-                Content = sanitizedMessage,
-                Timestamp = chatMessage.Timestamp
-            });
+            await Clients.Group(roomName).SendAsync("ReceiveMessage", user.Username, sanitizedMessage, DateTime.UtcNow);
+            //await Clients.Group(roomName).SendAsync("ReceiveMessage", new
+            //{
+            //    user = user.Username,
+            //    message = sanitizedMessage,  // Meddelandetext
+            //    timestamp = chatMessage.Timestamp
+            //});
         }
         
 

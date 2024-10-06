@@ -12,8 +12,6 @@ public class User
     [Required]
     public string PasswordHash { get; set; }
 
-    public string ProfilePictureUrl { get; set; }
-
     [Required]
     public string Email { get; set; }
     
