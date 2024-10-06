@@ -5,12 +5,14 @@ const MessageInput = ({ onSend }) => {
   const [newMessage, setNewMessage] = useState("");
 
   const handleSend = () => {
-    onSend(newMessage);
-    setNewMessage("");
+    if (newMessage.trim()) {
+      onSend(newMessage);
+      setNewMessage("");
+    }
   };
 
   return (
-    <Box display="flex" p={2}>
+    <Box display="flex" p={2} bgcolor="#1e1e1e">
       <TextField
         fullWidth
         variant="outlined"
@@ -22,6 +24,9 @@ const MessageInput = ({ onSend }) => {
             handleSend();
             e.preventDefault();
           }
+        }}
+        InputProps={{
+          style: { backgroundColor: "#2c2c2c", color: "#ffffff" },
         }}
       />
       <Button
