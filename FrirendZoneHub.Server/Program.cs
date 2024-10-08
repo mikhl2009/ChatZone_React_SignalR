@@ -4,12 +4,18 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Text.Encodings.Web;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
+    });
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -95,7 +101,13 @@ builder.Services.AddAuthentication(options =>
 });
 
 
-builder.Services.AddSignalR();
+builder.Services.AddSignalR().AddJsonProtocol(options =>
+{
+    options.PayloadSerializerOptions.PropertyNamingPolicy = null;
+    options.PayloadSerializerOptions.DictionaryKeyPolicy = null;
+   
+
+});
 //builder.Logging.ClearProviders(); builder.Host.UseNLog();
 //builder.Services.AddCors(options => {
 //    options.AddPolicy("CorsPolicy", builder =>
