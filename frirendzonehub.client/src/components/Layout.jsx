@@ -50,6 +50,21 @@ const Layout = () => {
         .withServerTimeout(60000)
         .build();
 
+      newConnection.on("ReceiveMessageHistory", (messageHistory) => {
+        if (Array.isArray(messageHistory)) {
+          console.log("Received message history:", messageHistory);
+          setMessages((prevMessages) => ({
+            ...prevMessages,
+            [selectedRoom]: messageHistory.map((msg) => ({
+              user: msg.user ? msg.user.username || "Unknown" : "Unknown", // Use fallback if user is null
+              message: msg.content || "No message", // Use fallback if message is null
+              timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(), // Default to current date if invalid
+            })),
+          }));
+        } else {
+          console.error("Invalid message history received:", messageHistory);
+        }
+      });
       // Receive real-time messages
       newConnection.on("ReceiveMessage", (user, message, timestamp) => {
         setMessages((prevMessages) => ({

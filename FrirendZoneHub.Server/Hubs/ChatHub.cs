@@ -1,5 +1,6 @@
 using FriendZoneHub.Server.Data;
 using FriendZoneHub.Server.Models;
+using FrirendZoneHub.Server.Models.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,8 @@ namespace FriendZoneHub.Server.Hubs
         public async Task JoinRoom(string roomName)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, roomName);
+            var history = await GetMessageHistory(roomName);
+            await Clients.Caller.SendAsync("ReceiveMessageHistory", history);
             var userId = Context.User.Claims.FirstOrDefault(c => c.Type == "uid")?.Value;
             if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int parsedUserId))
             {
@@ -50,8 +53,6 @@ namespace FriendZoneHub.Server.Hubs
 
         public async Task SendMessage(string roomName, string message)
         {
-            // Sanitize message to prevent XSS
-            var sanitizedMessage = System.Net.WebUtility.HtmlEncode(message);
 
             var userId = Context.User.Claims.FirstOrDefault(c => c.Type == "uid")?.Value;
             if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int parsedUserId))
@@ -76,20 +77,34 @@ namespace FriendZoneHub.Server.Hubs
 
             var chatMessage = new Message
             {
-                Content = sanitizedMessage,
+                Content = message,
                 Timestamp = DateTime.UtcNow,
                 ChatRoomId = chatRoom.Id,
                 UserId = user.Id
             };
-            _logger.LogInformation($"{user.Username} in {roomName}: {sanitizedMessage}");
+            _logger.LogInformation($"{user.Username} in {roomName}: {message}");
 
             _context.Messages.Add(chatMessage);
             await _context.SaveChangesAsync();
 
-            await Clients.Group(roomName).SendAsync("ReceiveMessage", user.Username, sanitizedMessage, chatMessage.Timestamp.ToString("o"));
+            await Clients.Group(roomName).SendAsync("ReceiveMessage", user.Username, message, chatMessage.Timestamp.ToString("o"));
         }
 
-
+        public async Task<List<MessageDto>> GetMessageHistory(string roomName)
+        {
+            return await _context.Messages
+                .Where(m => m.ChatRoom.Name == roomName)
+                .OrderByDescending(m => m.Timestamp)
+                .Take(50)
+                .Select(m => new MessageDto
+                {
+                    Id = m.Id,
+                    Content = m.Content,
+                    Timestamp = m.Timestamp,
+                    Username = m.User.Username // Include only necessary information
+                })
+                .ToListAsync();
+        }
 
 
 

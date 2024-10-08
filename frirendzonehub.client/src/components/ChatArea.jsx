@@ -8,7 +8,9 @@ const ChatArea = ({ messages }) => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
     console.log(messages);
   }, [messages]);
-
+  const sortedMessages = messages.sort(
+    (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+  );
   return (
     <Box className="chatarea" flexGrow={1} p={2} overflow="auto">
       {messages.map((msg, index) => (
