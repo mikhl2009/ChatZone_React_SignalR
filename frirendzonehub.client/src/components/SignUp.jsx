@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { Box, TextField, Button, Typography } from "@mui/material";
+import {
+  Box,
+  TextField,
+  Button,
+  Typography,
+  Snackbar,
+  Alert,
+} from "@mui/material";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
@@ -7,6 +14,8 @@ const SignUp = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [openSnackbar, setOpenSnackbar] = useState(false);
   const navigate = useNavigate();
 
   const handleSignUp = async () => {
@@ -19,12 +28,23 @@ const SignUp = () => {
       alert("Registration successful.");
       navigate("/login");
     } catch (error) {
-      alert("Registration failed: " + error.response.data);
+      setErrorMessage(error.response?.data || "Registration failed.");
+      setOpenSnackbar(true);
     }
   };
 
+  const handleSnackbarClose = () => {
+    setOpenSnackbar(false);
+  };
+
   return (
-    <Box display="flex" flexDirection="column" alignItems="center" mt={10}>
+    <Box
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      mt={10}
+      sx={{ maxWidth: 400, mx: "auto" }}
+    >
       <Typography variant="h4" mb={3}>
         Sign Up
       </Typography>
@@ -58,6 +78,20 @@ const SignUp = () => {
       >
         Sign Up
       </Button>
+
+      <Snackbar
+        open={openSnackbar}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+      >
+        <Alert
+          onClose={handleSnackbarClose}
+          severity="error"
+          sx={{ width: "100%" }}
+        >
+          {errorMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
