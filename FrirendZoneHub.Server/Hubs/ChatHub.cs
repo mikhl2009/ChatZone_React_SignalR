@@ -1,7 +1,8 @@
 using FriendZoneHub.Server.Data;
 using FriendZoneHub.Server.Models;
 using FrirendZoneHub.Server.Models.DTOs;
-using Microsoft.AspNetCore.Authorization;
+using Ganss.Xss;
+ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
@@ -53,6 +54,8 @@ namespace FriendZoneHub.Server.Hubs
 
         public async Task SendMessage(string roomName, string message)
         {
+            var sanitizer = new HtmlSanitizer();
+            var sanitizedMessage = sanitizer.Sanitize(message);
 
             var userId = Context.User.Claims.FirstOrDefault(c => c.Type == "uid")?.Value;
             if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int parsedUserId))
@@ -77,7 +80,7 @@ namespace FriendZoneHub.Server.Hubs
 
             var chatMessage = new Message
             {
-                Content = message,
+                Content = sanitizedMessage,
                 Timestamp = DateTime.UtcNow,
                 ChatRoomId = chatRoom.Id,
                 UserId = user.Id
@@ -87,7 +90,7 @@ namespace FriendZoneHub.Server.Hubs
             _context.Messages.Add(chatMessage);
             await _context.SaveChangesAsync();
 
-            await Clients.Group(roomName).SendAsync("ReceiveMessage", user.Username, message, chatMessage.Timestamp.ToString("o"));
+            await Clients.Group(roomName).SendAsync("ReceiveMessage", user.Username, sanitizedMessage, chatMessage.Timestamp.ToString("o"));
         }
 
         public async Task<List<MessageDto>> GetMessageHistory(string roomName)
