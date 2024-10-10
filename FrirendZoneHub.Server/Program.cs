@@ -7,12 +7,13 @@ using System.Text;
 using System.Text.Encodings.Web;
 using NLog;
 using NLog.Web;
+using FrirendZoneHub.Server.Utils;
 
 var builder = WebApplication.CreateBuilder(args);
 // add NLog to ASP.NET Core
 builder.Logging.ClearProviders();
-builder.Host.UseNLog();
-
+builder.Logging.AddConsole();
+builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information);
 
 // Add services to the container.
 
@@ -106,6 +107,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.Services.AddSingleton<EncryptionHelper>();
 
 builder.Services.AddSignalR().AddJsonProtocol(options =>
 {

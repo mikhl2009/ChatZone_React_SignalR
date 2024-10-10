@@ -6,8 +6,49 @@ import MessageInput from "./MessageInput";
 import * as signalR from "@microsoft/signalr";
 import MenuIcon from "@mui/icons-material/Menu";
 import DOMPurify from "dompurify";
+import CryptoJS from "crypto-js"; // Importera CryptoJS
 
 const drawerWidth = 240;
+
+// AES-nyckel (32 tecken för AES-256). Ska matcha serverns nyckel.
+const AES_KEY = "7CboWDwyMfsUsBXgi0fNa2UBt38Z4uM6"; // **OBS:** För produktion, hantera nyckeln säkert
+const keyHex = CryptoJS.enc.Utf8.parse(AES_KEY);
+
+// Funktion för att kryptera meddelanden
+const encryptMessage = (message) => {
+  const iv = CryptoJS.lib.WordArray.random(16); // Skapar en slumpmässig IV
+  const encrypted = CryptoJS.AES.encrypt(message, keyHex, {
+    iv: iv,
+    mode: CryptoJS.mode.CBC,
+    padding: CryptoJS.pad.Pkcs7,
+  });
+  const encryptedMessage = iv.concat(encrypted.ciphertext); // Kombinera IV + ciphertext
+  return CryptoJS.enc.Base64.stringify(encryptedMessage); // Konvertera till Base64
+};
+
+// Funktion för att dekryptera meddelanden
+const decryptMessage = (encryptedMessage) => {
+  try {
+    const encryptedBytes = CryptoJS.enc.Base64.parse(encryptedMessage);
+    const iv = CryptoJS.lib.WordArray.create(
+      encryptedBytes.words.slice(0, 4),
+      16
+    ); // IV är de första 16 byten (4 Word)
+    const cipherText = CryptoJS.lib.WordArray.create(
+      encryptedBytes.words.slice(4),
+      encryptedBytes.sigBytes - 16
+    );
+    const decrypted = CryptoJS.AES.decrypt({ ciphertext: cipherText }, keyHex, {
+      iv: iv,
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7,
+    });
+    return decrypted.toString(CryptoJS.enc.Utf8); // Konverterar tillbaka till klartext
+  } catch (error) {
+    console.error("Dekrypteringsfel:", error);
+    return "";
+  }
+};
 
 const Layout = () => {
   const [selectedRoom, setSelectedRoom] = useState(null);
@@ -53,32 +94,61 @@ const Layout = () => {
         .build();
 
       // Receive real-time messages
-      newConnection.on("ReceiveMessage", (user, message, timestamp) => {
-        if (!isMounted) return;
-        const sanitizedUser = DOMPurify.sanitize(user); // Saniterar användarnamn
-        const sanitizedMessage = DOMPurify.sanitize(message); // Saniterar meddelande
-        if (!isMounted) return;
-        console.log("ReceiveMessage:", { user:sanitizedUser, message: sanitizedMessage, timestamp });
-        setMessages((prevMessages) => ({
-          ...prevMessages,
-          [selectedRoom]: [
-            ...(prevMessages[selectedRoom] || []),
-            { user: sanitizedUser, message: sanitizedMessage, timestamp: new Date(timestamp) },
-          ],
-        }));
-      });
+      newConnection.on(
+        "ReceiveMessage",
+        (user, encryptedMessage, timestamp) => {
+          if (!isMounted) return;
+
+          // Dekryptera meddelandet
+          const decryptedMessage = decryptMessage(encryptedMessage);
+
+          // Om dekrypteringen misslyckas, använd det ursprungliga meddelandet
+          const displayMessage =
+            decryptedMessage !== "" ? decryptedMessage : encryptedMessage;
+
+          // Saniterar användarnamn och meddelande
+          const sanitizedUser = DOMPurify.sanitize(user);
+          const sanitizedMessage = DOMPurify.sanitize(displayMessage);
+
+          console.log("ReceiveMessage:", {
+            user: sanitizedUser,
+            message: sanitizedMessage,
+            timestamp,
+          });
+
+          setMessages((prevMessages) => ({
+            ...prevMessages,
+            [selectedRoom]: [
+              ...(prevMessages[selectedRoom] || []),
+              {
+                user: sanitizedUser,
+                message: sanitizedMessage,
+                timestamp: new Date(timestamp),
+              },
+            ],
+          }));
+        }
+      );
 
       // Receive message history
       newConnection.on("ReceiveMessageHistory", (messageHistory) => {
         if (!isMounted) return;
         console.log("ReceiveMessageHistory:", messageHistory);
+
+        const decryptedHistory = messageHistory.map((msg) => {
+          const decryptedContent = decryptMessage(msg.Content);
+          const displayMessage =
+            decryptedContent !== "" ? decryptedContent : msg.Content;
+          return {
+            user: DOMPurify.sanitize(msg.Username),
+            message: DOMPurify.sanitize(displayMessage),
+            timestamp: new Date(msg.Timestamp),
+          };
+        });
+
         setMessages((prevMessages) => ({
           ...prevMessages,
-          [selectedRoom]: messageHistory.map((msg) => ({
-            user: msg.Username,
-            message: msg.Content,
-            timestamp: new Date(msg.Timestamp),
-          })),
+          [selectedRoom]: decryptedHistory,
         }));
       });
 
@@ -104,16 +174,18 @@ const Layout = () => {
         connectionRef.current = null;
       }
     };
-  }, [selectedRoom]);
+  }, [selectedRoom, token]); // Lägg till 'token' i beroende-listan
 
   const handleSendMessage = async (msg) => {
     const sanitizedMessage = DOMPurify.sanitize(msg);
+    const encryptedMessage = encryptMessage(sanitizedMessage); // Kryptera meddelandet
+
     if (connectionRef.current && selectedRoom) {
       try {
         await connectionRef.current.invoke(
           "SendMessage",
           selectedRoom,
-          sanitizedMessage
+          encryptedMessage // Skicka det krypterade meddelandet
         );
       } catch (error) {
         console.log("Error sending message:", error);
