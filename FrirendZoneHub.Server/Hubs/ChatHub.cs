@@ -2,9 +2,10 @@ using FriendZoneHub.Server.Data;
 using FriendZoneHub.Server.Models;
 using FrirendZoneHub.Server.Models.DTOs;
 using Ganss.Xss;
- using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using NLog;
 
 namespace FriendZoneHub.Server.Hubs
 {
@@ -13,6 +14,7 @@ namespace FriendZoneHub.Server.Hubs
     {
         private readonly ChatAppContext _context;
         private readonly ILogger<ChatHub> _logger;
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
         public ChatHub(ChatAppContext context, ILogger<ChatHub> logger)
         {
@@ -25,7 +27,7 @@ namespace FriendZoneHub.Server.Hubs
             var userIdClaim = Context.User.Claims.FirstOrDefault(c => c.Type == "uid")?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
             {
-                _logger.LogError("Invalid or missing user ID.");
+                Logger.Error("Invalid or missing user ID.");
                 return;
             }
 
@@ -35,7 +37,7 @@ namespace FriendZoneHub.Server.Hubs
 
             if (user == null)
             {
-                _logger.LogError($"User not found with ID: {userId}");
+                Logger.Error($"User not found with ID: {userId}");
                 return;
             }
 
@@ -45,7 +47,7 @@ namespace FriendZoneHub.Server.Hubs
 
             if (chatRoom == null)
             {
-                _logger.LogError($"Chat room not found: {roomName}");
+                Logger.Error($"Chat room not found: {roomName}");
                 return;
             }
 
@@ -54,7 +56,7 @@ namespace FriendZoneHub.Server.Hubs
 
             if (chatRoom.IsPrivate && !isUserAuthorized)
             {
-                _logger.LogWarning($"Access denied for user {user.Username} to room {roomName}");
+                Logger.Warn($"Access denied for user {user.Username} to room {roomName}");
                 await Clients.Caller.SendAsync("AccessDenied", "You do not have access to this room.");
                 return;
             }
@@ -71,41 +73,10 @@ namespace FriendZoneHub.Server.Hubs
                 ("ReceiveMessage",null,$"{user.Username} joined the room {roomName}",
                 DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
         }
-
-        // get chat room by Id  
-        
-
-        //public async Task AddUserToRoom(int userId, string roomName)
-        //{
-            
-        //    var chatRoom = await _context.ChatRooms
-        //        .Include(cr => cr.Users)
-        //        .FirstOrDefaultAsync(cr => cr.Name == roomName);
-
-        //    if (chatRoom == null)
-        //    {
-        //        _logger.LogError($"Chat room not found: {roomName}");
-        //        return;
-        //    }
-
-        //    var user = await _context.Users.FindAsync(userId);
-        //    if (user == null)
-        //    {
-        //        _logger.LogError($"User not found with ID: {userId}");
-        //        return;
-        //    }
-
-        //    if (!chatRoom.Users.Any(u => u.Id == userId))
-        //    {
-        //        chatRoom.Users.Add(user);
-        //        await _context.SaveChangesAsync();
-        //        _logger.LogInformation($"User {user.Username} added to room {roomName}");
-        //    }
-        //}
         public async Task LeaveRoom(string roomName)
         {
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomName);
-            _logger.LogInformation($"{Context.User.Identity.Name} left {roomName}");
+            Logger.Info($"{Context.User.Identity.Name} left {roomName}");
         }
 
         public async Task SendMessage(string roomName, string message)
@@ -116,14 +87,14 @@ namespace FriendZoneHub.Server.Hubs
             var userId = Context.User.Claims.FirstOrDefault(c => c.Type == "uid")?.Value;
             if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int parsedUserId))
             {
-                _logger.LogError("Invalid or missing user ID.");
+                Logger.Error("Invalid or missing user ID.");
                 return;
             }
 
             var user = await _context.Users.FindAsync(parsedUserId);
             if (user == null)
             {
-                _logger.LogError($"User not found with ID: {parsedUserId}");
+                Logger.Error($"User not found with ID: {parsedUserId}");
                 return;
             }
 
@@ -132,13 +103,13 @@ namespace FriendZoneHub.Server.Hubs
                 .FirstOrDefault(cr => cr.Name == roomName);
             if (chatRoom == null)
             {
-                _logger.LogError($"Chat room not found: {roomName}");
+                Logger.Error($"Chat room not found: {roomName}");
                 return;
             }
             bool isUserAuthorized = !chatRoom.IsPrivate || chatRoom.Users.Any(u => u.Id == user.Id) || chatRoom.AdminId == user.Id;
             if (!isUserAuthorized)
             {
-                _logger.LogWarning($"Access denied for user {user.Username} to send message to room {roomName}");
+                Logger.Warn($"Access denied for user {user.Username} to send message to room {roomName}");
                 await Clients.Caller.SendAsync("AccessDenied", "You do not have access to this room.");
                 return;
             }
@@ -149,7 +120,7 @@ namespace FriendZoneHub.Server.Hubs
                 ChatRoomId = chatRoom.Id,
                 UserId = user.Id
             };
-            _logger.LogInformation($"{user.Username} in {roomName}: {message}");
+            Logger.Info($"{user.Username} in {roomName}: {message}");
 
             _context.Messages.Add(chatMessage);
             await _context.SaveChangesAsync();

@@ -3,6 +3,7 @@ using FrirendZoneHub.Server.Models.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using NLog;
 
 namespace FrirendZoneHub.Server.Controllers
 {
@@ -11,6 +12,7 @@ namespace FrirendZoneHub.Server.Controllers
     public class ChatRoomsController : Controller
     {
         private readonly ChatAppContext _context;
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
         public ChatRoomsController(ChatAppContext context)
         {

@@ -1,4 +1,4 @@
-﻿namespace FrirendZoneHub.Server.Models
+﻿namespace FriendZoneHub.Server.Models
 {
     public class LoginModel
     {

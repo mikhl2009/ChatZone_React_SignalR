@@ -5,8 +5,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Encodings.Web;
+using NLog;
+using NLog.Web;
 
 var builder = WebApplication.CreateBuilder(args);
+// add NLog to ASP.NET Core
+builder.Logging.ClearProviders();
+builder.Host.UseNLog();
+
 
 // Add services to the container.
 
