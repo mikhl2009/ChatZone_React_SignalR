@@ -1,5 +1,5 @@
 ﻿using FriendZoneHub.Server.Data;
-using FrirendZoneHub.Server.Models;
+using FriendZoneHub.Server.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
