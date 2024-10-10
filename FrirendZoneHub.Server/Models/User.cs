@@ -1,5 +1,4 @@
-﻿using FriendZoneHub.Server.Models;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 public class User
 {
@@ -16,5 +15,5 @@ public class User
     public string Email { get; set; }
 
     // Navigation properties
-    public ICollection<ChatRoom> ChatRooms { get; set; } = new List<ChatRoom>(); // For many-to-many relationship
+    public ICollection<ChatRoom> ChatRooms { get; set; } = new List<ChatRoom>();
 }

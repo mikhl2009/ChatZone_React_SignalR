@@ -11,13 +11,14 @@ import ChatPage from "./pages/ChatPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import WelcomePage from "./components/WelcomePage";
 
+
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = React.useState(
-    !!localStorage.getItem("token")
+    !!localStorage.getItem("authToken")
   );
 
   React.useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("authToken");
     setIsAuthenticated(!!token);
   }, []);
 
