@@ -10,6 +10,8 @@ public class ChatRoom
     public string Name { get; set; }
 
     public bool IsPrivate { get; set; }
+    public int AdminId { get; set; }
+    public User Admin { get; set; }
 
     // Navigation properties
     public ICollection<User> Users { get; set; } = new List<User>();

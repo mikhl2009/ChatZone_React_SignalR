@@ -12,26 +12,29 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FrirendZoneHub.Server.Migrations
 {
     [DbContext(typeof(ChatAppContext))]
-    [Migration("20241005231523_sigupmodel3")]
-    partial class sigupmodel3
+    [Migration("20241010124835_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.8")
+                .HasAnnotation("ProductVersion", "8.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
 
-            modelBuilder.Entity("FriendZoneHub.Server.Models.ChatRoom", b =>
+            modelBuilder.Entity("ChatRoom", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AdminId")
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsPrivate")
                         .HasColumnType("tinyint(1)");
@@ -42,7 +45,24 @@ namespace FrirendZoneHub.Server.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AdminId");
+
                     b.ToTable("ChatRooms");
+                });
+
+            modelBuilder.Entity("ChatRoomUser", b =>
+                {
+                    b.Property<int>("ChatRoomsId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UsersId")
+                        .HasColumnType("int");
+
+                    b.HasKey("ChatRoomsId", "UsersId");
+
+                    b.HasIndex("UsersId");
+
+                    b.ToTable("UserChatRooms", (string)null);
                 });
 
             modelBuilder.Entity("FriendZoneHub.Server.Models.Message", b =>
@@ -83,21 +103,11 @@ namespace FrirendZoneHub.Server.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("ChatRoomId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ChatRoomId1")
-                        .HasColumnType("int");
-
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("longtext");
 
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("ProfilePictureUrl")
                         .IsRequired()
                         .HasColumnType("longtext");
 
@@ -107,16 +117,38 @@ namespace FrirendZoneHub.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ChatRoomId");
-
-                    b.HasIndex("ChatRoomId1");
-
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("ChatRoom", b =>
+                {
+                    b.HasOne("User", "Admin")
+                        .WithMany()
+                        .HasForeignKey("AdminId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Admin");
+                });
+
+            modelBuilder.Entity("ChatRoomUser", b =>
+                {
+                    b.HasOne("ChatRoom", null)
+                        .WithMany()
+                        .HasForeignKey("ChatRoomsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("User", null)
+                        .WithMany()
+                        .HasForeignKey("UsersId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FriendZoneHub.Server.Models.Message", b =>
                 {
-                    b.HasOne("FriendZoneHub.Server.Models.ChatRoom", "ChatRoom")
+                    b.HasOne("ChatRoom", "ChatRoom")
                         .WithMany("Messages")
                         .HasForeignKey("ChatRoomId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -133,24 +165,9 @@ namespace FrirendZoneHub.Server.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("User", b =>
+            modelBuilder.Entity("ChatRoom", b =>
                 {
-                    b.HasOne("FriendZoneHub.Server.Models.ChatRoom", null)
-                        .WithMany("AllowedUsers")
-                        .HasForeignKey("ChatRoomId");
-
-                    b.HasOne("FriendZoneHub.Server.Models.ChatRoom", null)
-                        .WithMany("Users")
-                        .HasForeignKey("ChatRoomId1");
-                });
-
-            modelBuilder.Entity("FriendZoneHub.Server.Models.ChatRoom", b =>
-                {
-                    b.Navigation("AllowedUsers");
-
                     b.Navigation("Messages");
-
-                    b.Navigation("Users");
                 });
 #pragma warning restore 612, 618
         }

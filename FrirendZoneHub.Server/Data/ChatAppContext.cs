@@ -27,6 +27,12 @@ namespace FriendZoneHub.Server.Data
                 .HasOne(m => m.User)
                 .WithMany()
                 .HasForeignKey(m => m.UserId);
+
+            modelBuilder.Entity<ChatRoom>()
+                .HasOne(cr => cr.Admin)
+                .WithMany()
+                .HasForeignKey(cr => cr.AdminId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
