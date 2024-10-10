@@ -1,3 +1,4 @@
+// File: FriendZoneHub.Server/Hubs/ChatHub.cs
 using FriendZoneHub.Server.Data;
 using FriendZoneHub.Server.Models;
 using FrirendZoneHub.Server.Models.DTOs;
@@ -5,7 +6,6 @@ using Ganss.Xss;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using NLog;
 
 namespace FriendZoneHub.Server.Hubs
 {
@@ -14,7 +14,6 @@ namespace FriendZoneHub.Server.Hubs
     {
         private readonly ChatAppContext _context;
         private readonly ILogger<ChatHub> _logger;
-        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
         public ChatHub(ChatAppContext context, ILogger<ChatHub> logger)
         {
@@ -27,7 +26,7 @@ namespace FriendZoneHub.Server.Hubs
             var userIdClaim = Context.User.Claims.FirstOrDefault(c => c.Type == "uid")?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
             {
-                Logger.Error("Invalid or missing user ID.");
+                _logger.LogError("Invalid or missing user ID.");
                 return;
             }
 
@@ -37,7 +36,7 @@ namespace FriendZoneHub.Server.Hubs
 
             if (user == null)
             {
-                Logger.Error($"User not found with ID: {userId}");
+                _logger.LogError($"User not found with ID: {userId}");
                 return;
             }
 
@@ -47,7 +46,7 @@ namespace FriendZoneHub.Server.Hubs
 
             if (chatRoom == null)
             {
-                Logger.Error($"Chat room not found: {roomName}");
+                _logger.LogError($"Chat room not found: {roomName}");
                 return;
             }
 
@@ -56,27 +55,31 @@ namespace FriendZoneHub.Server.Hubs
 
             if (chatRoom.IsPrivate && !isUserAuthorized)
             {
-                Logger.Warn($"Access denied for user {user.Username} to room {roomName}");
+                _logger.LogWarning($"Access denied for user {user.Username} to room {roomName}");
                 await Clients.Caller.SendAsync("AccessDenied", "You do not have access to this room.");
                 return;
             }
 
             await Groups.AddToGroupAsync(Context.ConnectionId, roomName);
 
-
             // Send message history
             var history = await GetMessageHistory(roomName);
             await Clients.Caller.SendAsync("ReceiveMessageHistory", history);
 
             // Notify others in the room
-            await Clients.Group(roomName).SendAsync
-                ("ReceiveMessage",null,$"{user.Username} joined the room {roomName}",
+            await Clients.Group(roomName).SendAsync(
+                "ReceiveMessage",
+                null,
+                $"{user.Username} joined the room {roomName}",
                 DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
+
+            _logger.LogInformation($"{user.Username} joined room {roomName}.");
         }
+
         public async Task LeaveRoom(string roomName)
         {
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomName);
-            Logger.Info($"{Context.User.Identity.Name} left {roomName}");
+            _logger.LogInformation($"{Context.User.Identity.Name} left {roomName}");
         }
 
         public async Task SendMessage(string roomName, string message)
@@ -87,32 +90,34 @@ namespace FriendZoneHub.Server.Hubs
             var userId = Context.User.Claims.FirstOrDefault(c => c.Type == "uid")?.Value;
             if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int parsedUserId))
             {
-                Logger.Error("Invalid or missing user ID.");
+                _logger.LogError("Invalid or missing user ID.");
                 return;
             }
 
             var user = await _context.Users.FindAsync(parsedUserId);
             if (user == null)
             {
-                Logger.Error($"User not found with ID: {parsedUserId}");
+                _logger.LogError($"User not found with ID: {parsedUserId}");
                 return;
             }
 
-            var chatRoom = _context.ChatRooms
+            var chatRoom = await _context.ChatRooms
                 .Include(cr => cr.Users)
-                .FirstOrDefault(cr => cr.Name == roomName);
+                .FirstOrDefaultAsync(cr => cr.Name == roomName);
             if (chatRoom == null)
             {
-                Logger.Error($"Chat room not found: {roomName}");
+                _logger.LogError($"Chat room not found: {roomName}");
                 return;
             }
+
             bool isUserAuthorized = !chatRoom.IsPrivate || chatRoom.Users.Any(u => u.Id == user.Id) || chatRoom.AdminId == user.Id;
             if (!isUserAuthorized)
             {
-                Logger.Warn($"Access denied for user {user.Username} to send message to room {roomName}");
+                _logger.LogWarning($"Access denied for user {user.Username} to send message to room {roomName}");
                 await Clients.Caller.SendAsync("AccessDenied", "You do not have access to this room.");
                 return;
             }
+
             var chatMessage = new Message
             {
                 Content = sanitizedMessage,
@@ -120,12 +125,16 @@ namespace FriendZoneHub.Server.Hubs
                 ChatRoomId = chatRoom.Id,
                 UserId = user.Id
             };
-            Logger.Info($"{user.Username} in {roomName}: {message}");
+            _logger.LogInformation($"{user.Username} in {roomName}: {message}");
 
             _context.Messages.Add(chatMessage);
             await _context.SaveChangesAsync();
 
-            await Clients.Group(roomName).SendAsync("ReceiveMessage", user.Username, sanitizedMessage, chatMessage.Timestamp.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
+            await Clients.Group(roomName).SendAsync(
+                "ReceiveMessage",
+                user.Username,
+                sanitizedMessage,
+                chatMessage.Timestamp.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
         }
 
         public async Task<List<MessageDto>> GetMessageHistory(string roomName)
@@ -143,12 +152,5 @@ namespace FriendZoneHub.Server.Hubs
                 })
                 .ToListAsync();
         }
-
-
-
-
     }
-
-
-
 }
