@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35208.52
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrirendZoneHub.Server", "FrirendZoneHub.Server\FrirendZoneHub.Server.csproj", "{5FA895C9-E3DF-442D-BB16-F8195AE676FF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FrirendZoneHub.Server", "FrirendZoneHub.Server\FrirendZoneHub.Server.csproj", "{5FA895C9-E3DF-442D-BB16-F8195AE676FF}"
 EndProject
 Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "frirendzonehub.client", "frirendzonehub.client\frirendzonehub.client.esproj", "{2B90C656-2158-4076-870C-89644CF30E33}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FriendZoneHub.Tests", "FriendZoneHub.Tests\FriendZoneHub.Tests.csproj", "{F7AF554F-353F-4F6C-BF75-A0D1EB688C04}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,6 +25,10 @@ Global
 		{2B90C656-2158-4076-870C-89644CF30E33}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2B90C656-2158-4076-870C-89644CF30E33}.Release|Any CPU.Build.0 = Release|Any CPU
 		{2B90C656-2158-4076-870C-89644CF30E33}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{F7AF554F-353F-4F6C-BF75-A0D1EB688C04}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7AF554F-353F-4F6C-BF75-A0D1EB688C04}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7AF554F-353F-4F6C-BF75-A0D1EB688C04}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7AF554F-353F-4F6C-BF75-A0D1EB688C04}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
