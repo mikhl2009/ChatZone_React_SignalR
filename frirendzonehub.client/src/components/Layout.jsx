@@ -55,12 +55,15 @@ const Layout = () => {
       // Receive real-time messages
       newConnection.on("ReceiveMessage", (user, message, timestamp) => {
         if (!isMounted) return;
-        console.log("ReceiveMessage:", { user, message, timestamp });
+        const sanitizedUser = DOMPurify.sanitize(user); // Saniterar användarnamn
+        const sanitizedMessage = DOMPurify.sanitize(message); // Saniterar meddelande
+        if (!isMounted) return;
+        console.log("ReceiveMessage:", { user:sanitizedUser, message: sanitizedMessage, timestamp });
         setMessages((prevMessages) => ({
           ...prevMessages,
           [selectedRoom]: [
             ...(prevMessages[selectedRoom] || []),
-            { user, message, timestamp: new Date(timestamp) },
+            { user: sanitizedUser, message: sanitizedMessage, timestamp: new Date(timestamp) },
           ],
         }));
       });
