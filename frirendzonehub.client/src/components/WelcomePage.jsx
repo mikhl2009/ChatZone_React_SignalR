@@ -32,7 +32,7 @@ const FeatureCard = ({ icon, title, description }) => (
       background: "rgba(255, 255, 255, 0.2)",
       textAlign: "center",
       borderRadius: 2,
-      height: "200px", // Adjusted height for the feature cards
+      height: "100px", // Adjusted height for the feature cards
       display: "flex",
       flexDirection: "column",
       justifyContent: "center", // Center contents vertically
@@ -40,10 +40,12 @@ const FeatureCard = ({ icon, title, description }) => (
     }}
   >
     <Box sx={{ fontSize: "2.5rem", mb: 1 }}>{icon}</Box>
-    <Typography variant="h6" gutterBottom>
+    <Typography variant="h6" gutterBottom color="white">
       {title}
     </Typography>
-    <Typography variant="body2">{description}</Typography>
+    <Typography variant="body2" color="white">
+      {description}
+    </Typography>
   </Card>
 );
 
@@ -82,8 +84,12 @@ const WelcomePage = () => {
           }}
         >
           <div>
-            <Typography variant={isSmallScreen ? "h5" : "h4"} gutterBottom>
-              Welcome to FriendZone Chat
+            <Typography
+              variant={isSmallScreen ? "h5" : "h4"}
+              gutterBottom
+              fontWeight={"600"}
+            >
+              Welcome to ChatZone Chat
             </Typography>
             <Typography variant={isSmallScreen ? "body1" : "h6"} gutterBottom>
               Connect with friends and enjoy chatting!
@@ -93,21 +99,21 @@ const WelcomePage = () => {
           <Grid container spacing={2} justifyContent="center" mb={2}>
             <Grid item xs={12} sm={4}>
               <FeatureCard
-                icon={<MessageCircle />}
+                icon={<MessageCircle color="white" />}
                 title="Real-time Chat"
                 description="Instant messaging with friends"
               />
             </Grid>
             <Grid item xs={12} sm={4}>
               <FeatureCard
-                icon={<Users />}
+                icon={<Users color="white" />}
                 title="Group Chats"
                 description="Create and join group conversations"
               />
             </Grid>
             <Grid item xs={12} sm={4}>
               <FeatureCard
-                icon={<Zap />}
+                icon={<Zap color="white" />}
                 title="Fast & Secure"
                 description="End-to-end encryption for your privacy"
               />
