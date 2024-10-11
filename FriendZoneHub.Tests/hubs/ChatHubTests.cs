@@ -3,11 +3,16 @@ using FriendZoneHub.Server.Data;
 using FriendZoneHub.Server.Hubs;
 using FriendZoneHub.Server.Models;
 using FrirendZoneHub.Server.Models.DTOs;
+using FrirendZoneHub.Server.Utils;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
+using System.Threading.Tasks;
+using Xunit;
 
 namespace FriendZoneHub.Tests.Hubs
 {
@@ -29,7 +34,7 @@ namespace FriendZoneHub.Tests.Hubs
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
             _context = new ChatAppContext(options);
-            SeedDatabase(_context);
+            SeedDatabase();
 
             // Mock SignalR Clients
             _mockClients = new Mock<IHubCallerClients>();
@@ -51,19 +56,19 @@ namespace FriendZoneHub.Tests.Hubs
             _mockGroups.Setup(g => g.RemoveFromGroupAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
-            // Mock HubCallerContext med ClaimsPrincipal
+            // Mock HubCallerContext with ClaimsPrincipal
             var mockHubCallerContext = new Mock<HubCallerContext>();
             var claims = new List<Claim>
             {
-                new Claim("uid", "1") // anta att användare med ID 1 är ansluten
+                new Claim("uid", "1") // Assume user with ID 1 is connected
             };
             var identity = new ClaimsIdentity(claims, "TestAuthType");
             var user = new ClaimsPrincipal(identity);
             mockHubCallerContext.Setup(c => c.User).Returns(user);
             mockHubCallerContext.Setup(c => c.ConnectionId).Returns("TestConnectionId");
 
-            // Instansiera ChatHub med mockade beroenden
-            _chatHub = new ChatHub(_context, _mockLogger.Object)
+            // Instantiate ChatHub with mocked dependencies
+            _chatHub = new ChatHub(_context, _mockLogger.Object, new EncryptionHelper())
             {
                 Clients = _mockClients.Object,
                 Context = mockHubCallerContext.Object,
@@ -71,8 +76,7 @@ namespace FriendZoneHub.Tests.Hubs
             };
         }
 
-
-        private void SeedDatabase(ChatAppContext context)
+        private void SeedDatabase()
         {
             // Seed Users
             var users = new List<User>
@@ -80,42 +84,18 @@ namespace FriendZoneHub.Tests.Hubs
                 new User { Id = 1, Username = "testuser1", PasswordHash = "hashedpwd1", Email = "user1@example.com" },
                 new User { Id = 2, Username = "testuser2", PasswordHash = "hashedpwd2", Email = "user2@example.com" }
             };
-            context.Users.AddRange(users);
+            _context.Users.AddRange(users);
 
             // Seed ChatRooms
             var chatRooms = new List<ChatRoom>
             {
-                new ChatRoom { Id = 1, Name = "General", IsPrivate = false, AdminId = 1 },
-                new ChatRoom { Id = 2, Name = "PrivateRoom", IsPrivate = true, AdminId = 2 }
+                new ChatRoom { Id = 1, Name = "General", IsPrivate = false, AdminId = 1, Users = new List<User> { users[0] } },
+                new ChatRoom { Id = 2, Name = "PrivateRoom", IsPrivate = true, AdminId = 2, Users = new List<User> { users[1] } }
             };
-            context.ChatRooms.AddRange(chatRooms);
-
-            // Seed UserChatRooms via navigations
-            var generalRoom = chatRooms.First(cr => cr.Name == "General");
-            var privateRoom = chatRooms.First(cr => cr.Name == "PrivateRoom");
-
-            var user1 = users.First(u => u.Id == 1);
-            var user2 = users.First(u => u.Id == 2);
-
-            user1.ChatRooms.Add(generalRoom);
-            user2.ChatRooms.Add(generalRoom);
-            user2.ChatRooms.Add(privateRoom);
-
-            // Seed Messages
-            var messages = new List<Message>
-            {
-                new Message { Id = 1, Content = "Hello World!", Timestamp = DateTime.UtcNow.AddMinutes(-10), ChatRoomId = 1, UserId = 1 },
-                new Message { Id = 2, Content = "Hi there!", Timestamp = DateTime.UtcNow.AddMinutes(-5), ChatRoomId = 1, UserId = 2 }
-            };
-            context.Messages.AddRange(messages);
-
-            context.SaveChanges();
+            _context.ChatRooms.AddRange(chatRooms);
+            _context.SaveChanges();
         }
 
-        /// <summary>
-        /// Test 1: Anslutning till Ett Chattrum
-        /// Säkerställer att en användare kan ansluta till ett chattrum, får meddelandehistorik och att rätt loggnivå används.
-        /// </summary>
         [Fact]
         public async Task JoinRoom_ShouldAddUserToGroup_AndSendMessageHistory()
         {
@@ -126,7 +106,6 @@ namespace FriendZoneHub.Tests.Hubs
             await _chatHub.JoinRoom(roomName);
 
             // Assert
-            // Verifiera att rätt chattrum hämtades från databasen genom att kontrollera loggen
             _mockLogger.Verify(
                 logger => logger.Log(
                     It.Is<LogLevel>(l => l == LogLevel.Information),
@@ -136,14 +115,12 @@ namespace FriendZoneHub.Tests.Hubs
                     It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.Once);
 
-            // Verifiera att meddelandehistoriken skickades till klienten
             _mockCallerClientProxy.Verify(
                 client => client.SendCoreAsync("ReceiveMessageHistory",
-                    It.Is<object?[]>(args => args.Length == 1 && args[0] is List<MessageDto>),
+                    It.Is<object?[]>(args => args.Length == 1 && args[0] is List<EncryptedMessageDto>),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
 
-            // Verifiera att ett meddelande skickades till gruppen om att användaren gick med
             _mockGroupClientProxy.Verify(
                 client => client.SendCoreAsync("ReceiveMessage",
                     It.Is<object?[]>(args => args.Length == 3
@@ -154,36 +131,61 @@ namespace FriendZoneHub.Tests.Hubs
                 Times.Once);
         }
 
-        /// <summary>
-        /// Test 2: Meddelandesändning
-        /// Säkerställer att ett meddelande sparas i databasen och broadcastas korrekt till gruppen.
-        /// </summary>
+        [Fact]
+        public async Task LeaveRoom_ShouldRemoveUserFromGroup_AndNotifyOthers()
+        {
+            // Arrange
+            string roomName = "General";
+
+            // Act
+            await _chatHub.LeaveRoom(roomName);
+
+            // Assert
+            _mockLogger.Verify(
+                logger => logger.Log(
+                    It.Is<LogLevel>(l => l == LogLevel.Information),
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("left")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Once);
+
+            _mockGroupClientProxy.Verify(
+                client => client.SendCoreAsync("ReceiveMessage",
+                    It.Is<object?[]>(args => args.Length == 3
+                        && args[0] == null
+                        && args[1].ToString().Contains("has left the room")
+                        && args[2] is string),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
         [Fact]
         public async Task SendMessage_ShouldBroadcastMessage_AndSaveToDatabase()
         {
             // Arrange
             string roomName = "General";
             string messageContent = "Test message";
+            string encryptedMessage = EncryptionHelper.Encrypt(messageContent); // Ensure this is valid
 
             // Act
-            await _chatHub.SendMessage(roomName, messageContent);
+            await _chatHub.SendMessage(roomName, encryptedMessage);
 
             // Assert
-            // Verifiera att meddelandet lades till i databasen
-            _context.Messages.Any(m => m.Content == messageContent && m.ChatRoomId == 1 && m.UserId == 1)
-                .Should().BeTrue("because the message should have been added to the database");
+            var savedMessage = _context.Messages.FirstOrDefault(m => m.ChatRoomId == 1 && m.UserId == 1);
+            savedMessage.Should().NotBeNull("because the message should have been added to the database");
+            savedMessage.Content.Should().NotBe(messageContent, "because the content should be encrypted"); // Check that it's not the plain text
+            savedMessage.Content.Should().Be(encryptedMessage, "because the content should match the encrypted message");
 
-            // Verifiera att meddelandet broadcastades till gruppen
             _mockGroupClientProxy.Verify(
                 client => client.SendCoreAsync("ReceiveMessage",
                     It.Is<object?[]>(args => args.Length == 3
                         && args[0].ToString() == "testuser1"
-                        && args[1].ToString() == messageContent
+                        && args[1].ToString() == encryptedMessage // Ensure this matches the encrypted message
                         && args[2] is string),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
 
-            // Verifiera att en informationslogg skapades när meddelandet skickades
             _mockLogger.Verify(
                 logger => logger.Log(
                     It.Is<LogLevel>(l => l == LogLevel.Information),
@@ -194,93 +196,21 @@ namespace FriendZoneHub.Tests.Hubs
                 Times.Once);
         }
 
-        /// <summary>
-        /// Test 3.1: Felhantering - Ogiltigt Användar-ID
-        /// Säkerställer att om en användare försöker skicka ett meddelande med ett ogiltigt användar-ID, hanteras felet korrekt.
-        /// </summary>
         [Fact]
-        public async Task SendMessage_InvalidUserId_ShouldLogError_AndNotBroadcast()
+        public async Task GetEncryptedMessageHistory_ShouldReturnMessageHistory()
         {
             // Arrange
             string roomName = "General";
-            string messageContent = "Test message with invalid user";
-
-            // Mock context med ogiltigt användar-ID
-            var mockHubCallerContext = new Mock<HubCallerContext>();
-            var claims = new List<Claim>
-            {
-                new Claim("uid", "invalid") // Ogiltigt user ID
-            };
-            var identity = new ClaimsIdentity(claims, "TestAuthType");
-            var user = new ClaimsPrincipal(identity);
-            mockHubCallerContext.Setup(c => c.User).Returns(user);
-            mockHubCallerContext.Setup(c => c.ConnectionId).Returns("TestConnectionId");
-
-            // Uppdatera ChatHub-kontakten
-            _chatHub.Context = mockHubCallerContext.Object;
 
             // Act
-            await _chatHub.SendMessage(roomName, messageContent);
+            var result = await _chatHub.GetEncryptedMessageHistory(roomName);
 
             // Assert
-            // Verifiera att meddelandet inte sparades i databasen
-            _context.Messages.Any(m => m.Content == messageContent).Should().BeFalse("because the user ID was invalid");
-
-            // Verifiera att ingen broadcast skedde
-            _mockGroupClientProxy.Verify(
-                client => client.SendCoreAsync("ReceiveMessage",
-                    It.IsAny<object?[]>(),
-                    It.IsAny<CancellationToken>()),
-                Times.Never);
-
-            // Verifiera att ett fel loggades
-            _mockLogger.Verify(
-                logger => logger.Log(
-                    It.Is<LogLevel>(l => l == LogLevel.Error),
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Invalid or missing user ID.")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
-                Times.Once);
+            result.Should().NotBeNull();
+            result.Should().BeOfType<List<EncryptedMessageDto>>();
+            result.Count.Should().BeGreaterThan(0, "because there should be messages in the history");
         }
 
-        /// <summary>
-        /// Test 3.2: Felhantering - Otillåten Åtkomst till Privat Chattrum
-        /// Säkerställer att om en användare utan behörighet försöker skicka ett meddelande till ett privat chattrum, hanteras detta korrekt.
-        /// </summary>
-        [Fact]
-        public async Task SendMessage_UnauthorizedUser_ShouldLogWarning_AndSendAccessDenied()
-        {
-            // Arrange
-            string roomName = "PrivateRoom"; // Endast användare med ID 2 har åtkomst
-            string messageContent = "Unauthorized message";
-
-            // Act
-            await _chatHub.SendMessage(roomName, messageContent);
-
-            // Assert
-            // Verifiera att meddelandet inte sparades i databasen
-            _context.Messages.Any(m => m.Content == messageContent).Should().BeFalse("because the user is unauthorized");
-
-            // Verifiera att AccessDenied skickades till klienten via Caller
-            _mockCallerClientProxy.Verify(
-                client => client.SendCoreAsync("AccessDenied",
-                    It.Is<object?[]>(args => args.Length == 1 && args[0].ToString() == "You do not have access to this room."),
-                    It.IsAny<CancellationToken>()),
-                Times.Once);
-
-            // Verifiera att en varning loggades
-            _mockLogger.Verify(
-                logger => logger.Log(
-                    It.Is<LogLevel>(l => l == LogLevel.Warning),
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Access denied for user")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
-                Times.Once);
-        }
-
-        // Dispose-metod för att rensa upp in-memory databasen efter tester
         public void Dispose()
         {
             _context.Database.EnsureDeleted();

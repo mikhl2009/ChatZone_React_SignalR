@@ -42,7 +42,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\frirendzonehub.client\frirendzonehub.client.esproj">
+    <ProjectReference Include="..\frirendzonehub.client\FriendZoneHub.client.esproj">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
   </ItemGroup>
