@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FriendZoneHub.Server\FriendZoneHub.Server.csproj" />
     <ProjectReference Include="..\FrirendZoneHub.Server\FriendZoneHub.Server.csproj" />
   </ItemGroup>
 
