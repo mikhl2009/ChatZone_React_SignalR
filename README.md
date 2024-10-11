@@ -16,7 +16,7 @@ Welcome to the ChatZone Application! This guide will walk you through the setup 
 First, clone the repository from GitHub:
 
 ```sh
-git clone https://github.com/username/ChatZoneChat.git
+git clone [https://github.com/username/ChatZoneChat.git]
 cd FriendZoneChat
 ```
 
