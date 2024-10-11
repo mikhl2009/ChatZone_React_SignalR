@@ -89,7 +89,7 @@ const WelcomePage = () => {
               gutterBottom
               fontWeight={"600"}
             >
-              Welcome to ChatZone Chat
+              Welcome to ChatZone
             </Typography>
             <Typography variant={isSmallScreen ? "body1" : "h6"} gutterBottom>
               Connect with friends and enjoy chatting!
